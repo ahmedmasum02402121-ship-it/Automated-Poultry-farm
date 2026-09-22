@@ -1,14 +1,10 @@
 // ============================================================
 // IoT-based Smart Poultry Farm Automation System
 // EEE 416 - Microprocessor and Embedded System Laboratory
-// Section: C2, Group: 06
+// Section: B2, Group: 06
 // Extracted from Final Project Report
 // ============================================================
 
-// ---- Blynk Configuration ----
-#define BLYNK_TEMPLATE_ID   "TMPL6bBGNkNAC"
-#define BLYNK_TEMPLATE_NAME "Automated Poultry Farm System"
-#define BLYNK_AUTH_TOKEN    "ic1DFZNAtZnvuScyPZYgy_7-4OMY1zmP"
 
 #include <WiFi.h>
 #include <WiFiClient.h>
@@ -17,8 +13,8 @@
 #include <ESP32Servo.h>
 
 // ---- WiFi Credentials ----
-char ssid[] = "Arjun";
-char pass[] = "arjunpaul";
+char ssid[] = "Masum";
+char pass[] = "masumbillah";
 
 // ---- Pin Definitions ----
 #define LDR_PIN              34  // Light sensor
@@ -94,11 +90,7 @@ void setup() {
   digitalWrite(PUMP_RELAY, HIGH);
   digitalWrite(HUMIDIFIER_RELAY, HIGH);
 
-  // Connect to Blynk
-  Serial.print("Connecting to Blynk...");
-  Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
-  Serial.println("Connected!");
-
+  
   Serial.println("\n[System Ready]");
   Serial.println("Current Thresholds:");
   Serial.println("-------------------");
@@ -113,22 +105,6 @@ void setup() {
   Serial.print("cm-"); Serial.print(foodFullThreshold); Serial.println("cm");
 }
 
-void loop() {
-  if (!Blynk.connected()) {
-    Serial.println("Blynk disconnected - attempting reconnect");
-    Blynk.connect();
-  }
-  Blynk.run();
-
-  readSensors();
-
-  if (!manualMode) {
-    automaticControl();
-  }
-
-  sendDataToBlynk();
-  delay(2000);
-}
 
 float getFoodDistance() {
   // Trigger the ultrasonic sensor
@@ -270,125 +246,5 @@ void automaticControl() {
     foodRetractedFlag = true;
     foodDispensedFlag = false;
     Serial.println("Food Retracted (Adequate Level)");
-  }
-}
-
-void sendDataToBlynk() {
-  float temperature = dht.readTemperature();
-  float humidity = dht.readHumidity();
-  int lightValue = analogRead(LDR_PIN);
-  int gasValue = analogRead(GAS_PIN);
-  int waterLevel = map(analogRead(WATER_PIN), 0, 4095, 0, 100);
-  float foodDistance = getFoodDistance();
-
-  Blynk.virtualWrite(V10, temperature); // Temperature gauge
-  Blynk.virtualWrite(V11, humidity);    // Humidity gauge
-  Blynk.virtualWrite(V12, gasValue);    // Gas level
-  Blynk.virtualWrite(V13, lightValue);  // Light level
-  Blynk.virtualWrite(V14, waterLevel);  // Water level
-  Blynk.virtualWrite(V15, foodDistance);// Food distance
-  Blynk.virtualWrite(V1, manualMode);   // Mode indicator
-}
-
-// ============================================================
-// Blynk Control Handlers
-// ============================================================
-
-BLYNK_WRITE(V0) { // Mode switch
-  manualMode = param.asInt();
-  Serial.print("Mode changed to: ");
-  Serial.println(manualMode ? "MANUAL" : "AUTO");
-
-  // When switching to auto mode, ensure all manual controls are turned off
-  if (!manualMode) {
-    digitalWrite(FAN_RELAY, HIGH);
-    digitalWrite(HEAT_BULB_RELAY, HIGH);
-    digitalWrite(OUTDOOR_LIGHT_RELAY, HIGH);
-    digitalWrite(EXHAUST_RELAY, HIGH);
-    digitalWrite(PUMP_RELAY, HIGH);
-    digitalWrite(HUMIDIFIER_RELAY, HIGH);
-    Serial.println("All manual controls reset to OFF");
-
-    // Reset all Blynk buttons to OFF state
-    Blynk.virtualWrite(V2, 0);
-    Blynk.virtualWrite(V3, 0);
-    Blynk.virtualWrite(V4, 0);
-    Blynk.virtualWrite(V5, 0);
-    Blynk.virtualWrite(V6, 0);
-    Blynk.virtualWrite(V7, 0);
-    Blynk.virtualWrite(V8, 0);
-  }
-}
-
-BLYNK_WRITE(V2) { // Manual fan control
-  if (manualMode) {
-    digitalWrite(FAN_RELAY, param.asInt() ? LOW : HIGH);
-    Serial.print("Manual Fan: ");
-    Serial.println(param.asInt() ? "ON" : "OFF");
-  } else {
-    Blynk.virtualWrite(V2, 0); // Reset the button in Blynk if not in manual mode
-  }
-}
-
-BLYNK_WRITE(V3) { // Manual heat bulb control
-  if (manualMode) {
-    digitalWrite(HEAT_BULB_RELAY, param.asInt() ? LOW : HIGH);
-    Serial.print("Manual Heat Bulb: ");
-    Serial.println(param.asInt() ? "ON" : "OFF");
-  } else {
-    Blynk.virtualWrite(V3, 0);
-  }
-}
-
-BLYNK_WRITE(V4) { // Manual outdoor light control
-  if (manualMode) {
-    digitalWrite(OUTDOOR_LIGHT_RELAY, param.asInt() ? LOW : HIGH);
-    Serial.print("Manual Outdoor Light: ");
-    Serial.println(param.asInt() ? "ON" : "OFF");
-  } else {
-    Blynk.virtualWrite(V4, 0);
-  }
-}
-
-BLYNK_WRITE(V5) { // Manual exhaust control
-  if (manualMode) {
-    digitalWrite(EXHAUST_RELAY, param.asInt() ? LOW : HIGH);
-    Serial.print("Manual Exhaust: ");
-    Serial.println(param.asInt() ? "ON" : "OFF");
-  } else {
-    Blynk.virtualWrite(V5, 0);
-  }
-}
-
-BLYNK_WRITE(V6) { // Manual water pump control
-  if (manualMode) {
-    digitalWrite(PUMP_RELAY, param.asInt() ? LOW : HIGH);
-    Serial.print("Manual Water Pump: ");
-    Serial.println(param.asInt() ? "ON" : "OFF");
-  } else {
-    Blynk.virtualWrite(V6, 0);
-  }
-}
-
-BLYNK_WRITE(V7) { // Manual food dispense
-  if (manualMode && param.asInt()) {
-    foodServo.attach(SERVO_PIN);
-    foodServo.write(0); // Dispense position
-    delay(1000);        // Longer delay for dispensing
-    foodServo.write(90);// Neutral position
-    delay(500);
-    foodServo.detach();
-    Serial.println("Manual Food Dispensed");
-    Blynk.virtualWrite(V7, 0); // Reset the button immediately
-  }
-}
-
-BLYNK_WRITE(V8) { // Manual humidifier control
-  if (manualMode) {
-    digitalWrite(HUMIDIFIER_RELAY, param.asInt() ? LOW : HIGH);
-    Serial.print("Manual Humidifier: ");
-    Serial.println(param.asInt() ? "ON" : "OFF");
-  } else {
-    Blynk.virtualWrite(V8, 0);
   }
 }
