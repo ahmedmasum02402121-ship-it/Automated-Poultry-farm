@@ -12,9 +12,6 @@
 #include <DHT.h>
 #include <ESP32Servo.h>
 
-// ---- WiFi Credentials ----
-char ssid[] = "Masum";
-char pass[] = "masumbillah";
 
 // ---- Pin Definitions ----
 #define LDR_PIN              34  // Light sensor
